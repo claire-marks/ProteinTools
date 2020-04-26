@@ -1,0 +1,55 @@
+#! /usr/bin/env python
+
+from protmod import loops, webtools
+
+description="""
+-------------------------------------------------
+LoopFinder
+
+Python program to identify which regions of a 
+PDB structure correspond to loops.
+
+Requires DSSP for secondary structure assignment.
+
+Examples: 
+    LoopFinder --pdbcodes 1lo4 12e8 2dqu
+    
+    LoopFinder --pdbfiles 1lo4.pdb
+
+by Claire Marks (marks@stats.ox.ac.uk)
+-------------------------------------------------
+"""
+
+if __name__ == "__main__":
+    import sys, os, subprocess
+    import argparse
+
+    # Add arguments
+    # User must provide either a pdb code (structure will be downloaded from web), or a pdb file, not both
+    parser = argparse.ArgumentParser(prog="LoopFinder", description=description, formatter_class=argparse.RawDescriptionHelpFormatter)
+    
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--pdbcodes', type=str, nargs="*", dest="pdbcodes", help="The PDB code(s) of the proteins for which you wish to identify loops. Structures will be downloaded from the PDB website.")
+    group.add_argument('--pdbfiles', type=str, nargs="*", dest="pdbfiles", help="The PDB file(s) of the proteins for which you wish to identify loops")
+    
+    parser.add_argument('--chain', type=str, dest="chain", help="Specify which chain of the protein should be analysed.")
+    
+    # Argument processing
+    if len( sys.argv ) ==1:
+        parser.print_help()
+        sys.exit(0)
+    
+    args = parser.parse_args()
+    
+    results = {}
+    if args.pdbcodes:
+        for pdbcode in args.pdbcodes:
+            # Download PDB structures from web first, then find loops
+            pdbfile = webtools.download_pdb_structure(pdbcode)
+            if pdbfile:
+                results[pdbcode] = loops.find_loops(pdbfile)
+    elif args.pdbfiles:
+        for pdbfile in args.pdbfiles:
+            # Find loops!
+            results[pdbfile] = loops.find_loops(pdbfile)
+    
