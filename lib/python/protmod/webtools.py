@@ -2,6 +2,7 @@
 
 import requests
 
+################################################################################
 def download_pdb_structure(pdbcode, pdbfile=None):
     """
     Download a PDB structure from the PDB website.
@@ -31,7 +32,7 @@ def download_pdb_structure(pdbcode, pdbfile=None):
     
     # Check file was downloaded successfully; if not return None
     if r.ok:
-        with open(outf, 'wb') as f:
+        with open(outfile, 'wb') as f:
             f.write(r.content)
         return outfile
     else:
