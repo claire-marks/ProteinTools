@@ -88,7 +88,6 @@ def to_biopython_resid(resid, het=" "):
     --RETURNS--
     A residue ID in Biopython format. For example, the string '100A' becomes 
         (' ', 100, 'A').
-    
     """
     
     inscode = " "
@@ -126,9 +125,10 @@ def assign_secondary_structure(pdbfile, modelno=0):
         the first.
         
     --RETURNS--
-    A dictionary of secondary structure assignments, using DSSP codes (i.e. E =
-        beta strand, H = alpha helix, etc.). 
-        Format is dict[chain_id][res_id] = DSSP assignment
+    A dictionary containing secondary structure assignments, using DSSP codes 
+        (i.e. E = beta strand, H = alpha helix, etc.). Dictionary keys are the
+        protein chain IDs, and values are a list of tuples giving residue 
+        ss assignments: (resid, ss_assignment)
     """
     
     # Load structure using Biopython and select specified model
@@ -139,15 +139,16 @@ def assign_secondary_structure(pdbfile, modelno=0):
     dssp_result = PDB.DSSP(model, pdbfile)
     
     # Extract SS assignments
-    result_dict = {}
+    # List of tuples format maintains the correct residue order
+    result = {}
     for chain, res in dssp_result.keys():
+        if chain not in result:
+            result[chain] = []
         resid = biopython_resid_to_str(res)
-        if chain in result_dict:
-            result_dict[chain][resid] = dssp_result[(chain, res)][2]
-        else:
-            result_dict[chain] = {resid: dssp_result[(chain, res)][2]}
+        k = (chain, res)
+        result[chain].append((resid, dssp_result[k][1], dssp_result[k][2]))
 
-    return result_dict
+    return result
     
 ################################################################################
 def get_fragment(structure, model, chain, start, end, anchorlength=0, 
@@ -190,8 +191,7 @@ def get_fragment(structure, model, chain, start, end, anchorlength=0,
             res = [i for i in residues if i.id[1] == start[1] and i.id[2] == start[2]][0]
             start_index = residues.index(res)
         except:
-            print "Error: start residue not found. May be a modified residue"
-            return
+            raise Exception("Error: start residue not found. May be a modified residue")
 
     # Look in residue list for the end residue
     if end in structure[model][chain]:
@@ -202,8 +202,7 @@ def get_fragment(structure, model, chain, start, end, anchorlength=0,
             res = [i for i in residues if i.id[1] == end[1] and i.id[2] == end[2]][0]
             end_index = residues.index(res)
         except:
-            print "Error: end residue not found. May be a modified residue"
-            return
+            raise Exception("Error: end residue not found. May be a modified residue")
 
     # Extract fragment
     fragment_res = residues[start_index-anchorlength:end_index+anchorlength+1]
@@ -223,5 +222,41 @@ def get_fragment(structure, model, chain, start, end, anchorlength=0,
                     missing.append(res.resname+"_"+atom)
         return fragment_atoms, missing
     else:
-        print "Argument 'returntype' not recognised, must be either 'atom' or 'residue'"
-        return
+        raise Exception("Argument 'returntype' not recognised, must be either 'atom' or 'residue'")
+
+################################################################################
+def check_consecutive(fragment):
+    """
+    Takes a list of BioPython residues and checks the residues are consecutive.
+    
+    In the first instance, based on the distance between the C of one residue 
+    and the N of the next; if less than 2A then the residues are assumed to be 
+    consecutive. If either of those two atoms are not present, we try the CA-CA
+    distance (non-consecutive if over 4.5A).
+
+    --PARAMETERS--
+    fragment: a list of Biopython residues.
+    
+    --RETURNS--
+    True if the residues in the input are consecutive, False if not.
+    """
+
+    consecutive = True
+    for resno in range(len(fragment)-1):
+        # Check the C-N distance between the two residues in the first instance
+        if fragment[resno].has_id("C") and fragment[resno+1].has_id("N"):
+            CN_distance = fragment[resno]["C"] - fragment[resno+1]["N"]
+            if CN_distance > 2:
+                consecutive = False
+                return consecutive
+        # If one or other of the atoms is not present, check CA-CA distance
+        elif fragment[resno].has_id("CA") and fragment[resno+1].has_id("CA"):
+            CA_distance = fragment[resno]["CA"] - fragment[resno+1]["CA"]
+            if CA_distance > 4.5:
+                consecutive = False
+                return consecutive
+        else:
+            print("Warning: missing atoms; cannot check consecutiveness of some residues")
+            continue
+
+    return consecutive

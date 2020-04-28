@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 from protmod import loops, webtools
 
@@ -20,6 +20,36 @@ by Claire Marks (marks@stats.ox.ac.uk)
 -------------------------------------------------
 """
 
+def write_result(structurename, loops, outfile):
+    if outfile:
+        string = ""
+        for chain in loops:
+            for loopno in range(len(loops[chain])):
+                l = loops[chain][loopno]
+                line = "\t".join([structurename, chain, str(loopno+1), l["start"], l["end"], l["sequence"]])
+                if "complete" in l:
+                    line += "\t" + str(l["complete"])
+                else:
+                    line += "-"
+                string += line + "\n"
+                
+        with open(outfile, "a") as f:
+            f.write(string)
+            
+    else:
+        string = "\nStructure: %s " %(structurename) + "-"*40 + "\n\n"
+        for chain in loops:
+            string += "\tChain %s: %d loops found\n\n" %(chain, len(loops[chain]))
+            for loopno in range(len(loops[chain])):
+                l = loops[chain][loopno]
+                resrange = "%s-%s" %(l["start"], l["end"])
+                string += "\t%6d:\t%12s\t%s" %(loopno+1, resrange, l["sequence"])
+                if "complete" in l and l["complete"] is False:
+                    string += " (incomplete)"
+                string += "\n"
+            string += "\n"
+        print(string)            
+
 if __name__ == "__main__":
     import sys, os, subprocess
     import argparse
@@ -32,7 +62,12 @@ if __name__ == "__main__":
     group.add_argument('--pdbcodes', type=str, nargs="*", dest="pdbcodes", help="The PDB code(s) of the proteins for which you wish to identify loops. Structures will be downloaded from the PDB website.")
     group.add_argument('--pdbfiles', type=str, nargs="*", dest="pdbfiles", help="The PDB file(s) of the proteins for which you wish to identify loops")
     
-    parser.add_argument('--chain', type=str, dest="chain", help="Specify which chain of the protein should be analysed.")
+    parser.add_argument('--outfile', '-o', dest="outfile", default=None, help="The path to the file to which results should be written. If not specified, results are printed to the terminal.")
+    parser.add_argument('--max_ss_len', dest="max_ss_len", default=3, type=int, help="The maximum number of consecutive non-loop residues that can appear within a loop (i.e. will not split the loop into two).")
+    parser.add_argument('--min_length', dest="min_length", default=3, type=int, help="the minimum length of loops to be returned.")
+    parser.add_argument('--max_length', dest="max_length", default=30, type=int, help="the maximum length of loops to be returned.")
+    parser.add_argument('--ignore_termini', action="store_true", dest="ignore_termini", help="with this flag, the script will not include the termini of the protein in the list of loops.")
+    parser.add_argument('--dont_check_missing', action="store_true", dest="dont_check_missing", help="without this flag, each loop will be checked for consecutive-ness to establish whether the loop is complete. If False, the function will be faster, but the check will not be done. If it is indicated that a loop is incomplete, the sequence and length given will not reflect the true loop structure, only what was present in the PDB file.")
     
     # Argument processing
     if len( sys.argv ) ==1:
@@ -41,15 +76,36 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    results = {}
+    # Set up output file
+    if args.outfile:
+        if args.dont_check_missing:
+            header = "Structure\tChain\tLoopNo\tStartRes\tEndRes\tSequence\n"
+        else:
+            header = "Structure\tChain\tLoopNo\tStartRes\tEndRes\tSequence\tComplete\n"
+        
+        with open(args.outfile, "w") as f:
+            f.write(header)
+    
     if args.pdbcodes:
         for pdbcode in args.pdbcodes:
             # Download PDB structures from web first, then find loops
             pdbfile = webtools.download_pdb_structure(pdbcode)
             if pdbfile:
-                results[pdbcode] = loops.find_loops(pdbfile)
+                result = loops.find_loops(pdbfile, 
+                                          max_ss_len=args.max_ss_len, 
+                                          min_length=args.min_length,
+                                          max_length=args.max_length,
+                                          remove_termini=args.ignore_termini,
+                                          check_missing= not args.dont_check_missing)
+                write_result(pdbcode, result, args.outfile)
     elif args.pdbfiles:
         for pdbfile in args.pdbfiles:
             # Find loops!
-            results[pdbfile] = loops.find_loops(pdbfile)
+            result = loops.find_loops(pdbfile, 
+                                      max_ss_len=args.max_ss_len, 
+                                      min_length=args.min_length,
+                                      max_length=args.max_length,
+                                      remove_termini=args.ignore_termini,
+                                      check_missing= not args.dont_check_missing)
+            write_result(pdbfile, result, args.outfile)
     
