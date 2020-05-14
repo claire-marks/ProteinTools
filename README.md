@@ -45,4 +45,4 @@ I've tried to group similarly-themed functions together and the submodule names 
 
 I've written a few command line scripts that take care of some specific tasks. For more details about running these, type the script name followed by '-h' at the command line (e.g. `LoopFinder -h`).
 
-  - LoopFinder - identifies which regions of a PDB structure (or a series of PDB structures) correspond to loops.
+  - **LoopFinder** - identifies which regions of a PDB structure (or a series of PDB structures) correspond to loops.
