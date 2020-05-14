@@ -32,15 +32,17 @@ Or:
 
 ### The 'protmod' Module
 
-I've tried to group similarly-themed functions together:
+I've tried to group similarly-themed functions together and the submodule names *should* be pretty self-explanatory:
 
-  - protmod = basic functions such as converting a one-letter amino acid code to a three-letter one
-  - protmod.webtools = functions for interacting with the web, e.g. downloading files from the PDB
-  - protmod.structures = functions for dealing with protein structures, normally using the Biopython PDB parser - for example, calculating phi/psi angles, selecting fragments
-  - protmod.loops = specific functions involving loops
-  - protmod.sequences = 
+  - **protmod** = basic functions such as converting a one-letter amino acid code to a three-letter one
+  - **protmod.webtools** = functions for interacting with the web, e.g. downloading files from the PDB
+  - **protmod.structures** = functions for dealing with protein structures, normally using the Biopython PDB parser - for example, calculating phi/psi angles, selecting fragments
+  - **protmod.loops** = specific functions involving loops - e.g. selecting the loop regions from a PDB structure
+  - **protmod.sequences** = functions for dealing with protein sequenecs, for example writing fasta files.
 
 
 ### The Scripts
 
+I've written a few command line scripts that take care of some specific tasks. For more details about running these, type the script name followed by '-h' at the command line (e.g. `LoopFinder -h`).
 
+  - LoopFinder - identifies which regions of a PDB structure (or a series of PDB structures) correspond to loops.
