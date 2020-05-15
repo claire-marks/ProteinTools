@@ -260,3 +260,79 @@ def check_consecutive(fragment):
             continue
 
     return consecutive
+    
+################################################################################
+def calculate_rmsd(fragment1, fragment2, atom_types=["N", "CA", "C", "O"]):
+    """
+    Calculates the RMSD (root mean square difference) between two protein 
+    fragments. It does NOT superimpose the two, so do that first if required!
+    
+    --PARAMETERS--
+    fragment1, fragment2: two lists of either Biopython Residues, Biopython
+        Atoms, or simple coordinates.
+    atom_types: if provided with lists of residues, which atom types should be
+        included in the RMSD calculation. This has no effect if the fragments
+        given are lists of atoms or coordinates (in that case everything is 
+        included).
+    
+    --RETURNS--
+    The RMSD between the two structures.
+    """
+    
+    # Check that the two lists are the same length
+    assert len(fragment1) == len(fragment2), "Number of atoms/residues doesn't match!"
+    
+    # If the lists contain Biopython residues:
+    if str(type(fragment1[0])) == "<class 'Bio.PDB.Residue.Residue'>":
+
+        try:
+            sum_sqdiff = 0
+            atom_count = 0
+            for i in range(len(fragment1)):
+                for a in atom_types:
+                    if fragment1[i].has_id(a) and fragment2[i].has_id(a):
+                        sum_sqdiff += ((fragment1[i][a].coord[0] - fragment2[i][a].coord[0])**2 +
+                                       (fragment1[i][a].coord[1] - fragment2[i][a].coord[1])**2 +
+                                       (fragment1[i][a].coord[2] - fragment2[i][a].coord[2])**2)
+                        atom_count += 1
+
+            RMSD = (sum_sqdiff/atom_count)**0.5
+
+            return RMSD
+        except:
+            "Error: Something went wrong! Expected Biopython Residues?"
+            return None
+
+    # If the lists contain Biopython atoms:
+    if str(type(fragment1[0])) == "<class 'Bio.PDB.Atom.Atom'>" or str(type(fragment1[0]) == "<class 'Bio.PDB.Atom.DisorderedAtom'>"):
+
+        try:
+            sum_sqdiff = 0
+            for i in range(len(fragment1)):
+                sum_sqdiff += ((fragment1[i].coord[0] - fragment2[i].coord[0])**2 +
+                               (fragment1[i].coord[1] - fragment2[i].coord[1])**2 +
+                               (fragment1[i].coord[2] - fragment2[i].coord[2])**2)
+
+            RMSD = (sum_sqdiff/len(fragment1))**0.5
+
+            return RMSD
+        except:
+            "Error: Something went wrong! Expected Biopython atoms?"
+            return None
+
+    # If not Biopython atoms, try just list of coordinates
+    if str(type(fragment1[0])) == "<class 'Bio.PDB.Atom.Atom'>":
+
+        try:
+            sum_sqdiff = 0
+            for i in range(len(fragment1)):
+                sum_sqdiff += ((fragment1[i][0] - fragment2[i][0])**2 +
+                               (fragment1[i][1] - fragment2[i][1])**2 +
+                               (fragment1[i][2] - fragment2[i][2])**2)
+
+            RMSD = (sum_sqdiff/len(fragment1))**0.5
+
+            return RMSD
+        except:
+            "Error: Something went wrong! Expected a list of coordinates?"
+            return None
