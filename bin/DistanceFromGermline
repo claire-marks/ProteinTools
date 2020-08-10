@@ -1,0 +1,227 @@
+#! /usr/bin/env python3
+# Calculates the Hamming distance between a query antibody sequence and its germline using ANARCI
+
+import sys
+from anarci import anarci, all_germlines
+from argparse import ArgumentParser
+from protmod.webtools import fetch_sequence_from_pdb
+
+def calculate_distance_from_germline(sequence=None, pdbcode=None, quiet=False, output=None,
+                                     pdbaapath="/homes/marks/Data/pdbaa", 
+                                     ssdispath = "/homes/marks/Data/ss_dis.txt"):
+    """Runs ANARCI to find the best-matching germline sequence, and calculates the Hamming
+    distance between it and the query. Either input a sequence or a PDB code (with chain ID); if a
+    PDB code is given then the sequence will be extracted from the pdbaa file as downloaded from
+    PISCES.
+    Argument 'output' tells the function where to write the results (optional).
+    Outputs the Hamming distance and the output string containing the nicely formatted sequences 
+    etc."""
+
+    outstring = ""    
+    
+    if sequence == None and pdbcode != None:
+        if quiet != True:
+            print("\n\n" + "-"*96)
+            print("\x1b[1m" + "Calculating distance from germline for PDB chain %s" %(pdbcode) + "\x1b[0m")
+            outstring += "-"*96 + "\n"
+            outstring += "Calculating distance from germline for PDB chain %s\n" %(pdbcode)
+            
+        pdbid = pdbcode[:4]
+        chainid = pdbcode[4:]
+        sequence = fetch_sequence_from_pdb(pdbid, chain=chainid)
+        
+        if not sequence:
+            print("Error: sequence for PDB code %s not found." %(pdbcode))
+            return
+              
+    elif sequence == None and pdbcode == None:
+        # One of the two must be given
+        print("Either a sequence or a PDB code must be given!")
+        return
+        
+    else:
+        if quiet != True:
+            print("\n\n" + "-"*96)
+            print("\x1b[1m" + "Calculating distance from germline for the following sequence:\n" + "\x1b[0m")
+            outstring += "\n\n" + "-"*96 + "\n"
+            outstring += "Calculating distance from germline for the following sequence:\n\n"
+            for i in range(0, len(sequence), 96):
+                print(sequence[i:i+96])
+                outstring += sequence[i:i+96] 
+        
+        
+    # Run ANARCI on the sequence
+    numbering, alignment, hit_details = anarci([("seq", sequence)], assign_germline=True)
+    
+    # Get information about the germline sequence
+    try:
+        chaintype = alignment[0][0]["chain_type"]
+    except:
+        print("ANARCI could not number this sequence!")
+        return
+    
+    j_species, j_gene = alignment[0][0]["germlines"]["j_gene"][0]
+    j_sequence = all_germlines["J"][chaintype][j_species][j_gene]
+    
+    v_species, v_gene = alignment[0][0]["germlines"]["v_gene"][0]
+    v_sequence = all_germlines["V"][chaintype][v_species][v_gene]
+    
+    # Combine V and J genes into one sequence - should both be the same length (128 residues)
+    germline_seq = ""
+    for i in range(128):
+        v_res = v_sequence[i]
+        j_res = j_sequence[i]
+        
+        if v_res != "-" and j_res == "-":
+            germline_seq += v_res
+        elif j_res != "-" and v_res == "-":
+            germline_seq += j_res
+        elif v_res == "-" and j_res == "-":
+            germline_seq += "-"
+        else:
+            # This (in theory) should never happen
+            print("Error: Both the V-gene and J-gene cover residue %d!" %(i+1))
+            return
+    
+    # Compare germline sequence to query sequence
+    bits = []
+    seq_string    = ""
+    germ_string   = ""
+    match_string  = ""
+    marker_string = ""
+    CDR_string    = ""
+    for res in numbering[0][0][0]:
+        resno = res[0][0]
+        resins = res[0][1]
+        restype = res[1]
+        
+        seq_string += restype
+        
+        # Check if this residue is part of a CDR
+        if resno >= 27 and resno <= 38:
+            CDR_string += "1"
+        elif resno >= 56 and resno <= 65:
+            CDR_string += "2"
+        elif resno >= 105 and resno <= 117:
+            CDR_string += "3"
+        else:
+            CDR_string += " "
+        
+        # If this residue is part of CDRH3 and there is no germline residue to compare against, ignore
+        # (since ANARCI doesn't assign a germline for the D segment)
+        if resno >= 105 and resno <=117 and chaintype == "H":
+            if germline_seq[resno-1] == "-":
+                bits.append(0)
+                match_string += " "
+                
+                if resno%10 == 0:
+                    marker_string += "|"
+                else:
+                    marker_string += resins
+                    
+                if resins == " ":
+                    germ_string += germline_seq[resno-1]
+                else:
+                    germ_string += "-"
+                
+                continue
+        
+        # If this residue has no insertion code, compare to germline sequence
+        if resins == " ":
+            germ_string += germline_seq[resno-1]
+            if restype == germline_seq[resno-1]:
+                bits.append(0)
+                match_string += " "
+            else:
+                bits.append(1)
+                match_string += "*"
+                
+            if resno%10 == 0:
+                marker_string += "|"
+            else:
+                marker_string += resins
+        
+        # If there is an insertion code, then there is no residue in the germline to compare to
+        if resins != " ":
+            bits.append(1)
+            germ_string += "-"
+            match_string += "*"
+            marker_string += resins
+    
+    # Get a string that contains IMGT numbering, with the right gaps        
+    no_string = ""
+    count = 10
+    for i in range(len(marker_string)):
+        if marker_string[i] == "|":
+            no_string += str(count)
+            count += 10
+        elif len(no_string) < i+1:
+            no_string += " "
+    
+    # Calculate Hamming distance: equals the sum of elements in the list 'bits'        
+    HammingDistance = sum(bits)
+    
+    # Print information about numbering, germlines etc.
+    if quiet != True:       
+        print("\n")
+        outstring += "\n"
+        for i in range(0, len(seq_string), 85):
+            print(" IMGT NO   " + no_string[i:i+85])
+            print("           " + marker_string[i:i+85])
+            print("   QUERY   " + "\x1b[1;36m" + seq_string[i:i+85] + "\x1b[0m")
+            print("           " + "\x1b[1;33m" + match_string[i:i+85] + "\x1b[0m")
+            print("GERMLINE   " + "\x1b[1;36m" + germ_string[i:i+85] + "\x1b[0m")
+            print("    CDRS   " + CDR_string[i:i+85])
+            print("\n")
+            
+            outstring += " IMGT NO   " + no_string[i:i+85] + "\n"
+            outstring += "           " + marker_string[i:i+85] + "\n"
+            outstring += "   QUERY   " + seq_string[i:i+85] + "\n"
+            outstring += "           " + match_string[i:i+85] + "\n"
+            outstring += "GERMLINE   " + germ_string[i:i+85] + "\n"
+            outstring += "    CDRS   " + CDR_string[i:i+85] + "\n"
+            outstring += "\n\n"
+    
+        print("Chain Type       : %s" %(chaintype))
+        print("V germline       : %s (%s)" %(v_gene, v_species))
+        print("J germline       : %s (%s)" %(j_gene, j_species))
+        print("Hamming Distance : %d\n%s\n\n" %(HammingDistance, "-"*96))
+        
+        outstring += "Chain Type       : %s\n" %(chaintype)
+        outstring += "V germline       : %s (%s)\n" %(v_gene, v_species)
+        outstring += "J germline       : %s (%s)\n" %(j_gene, j_species)
+        outstring += "Hamming Distance : %d\n%s" %(HammingDistance, "-"*96)
+        
+    if output != None:
+        with open(output, "w") as f:
+            f.write(outstring)
+    
+    return HammingDistance, outstring
+
+if __name__ == '__main__':    
+    # Parse input arguments
+    argParser = ArgumentParser()
+    argParser.add_argument("--sequence", "-seq", type=str, dest = "sequence", 
+                           help="Your query sequence. Alternatively, give a PDB code", default=None)
+    argParser.add_argument("--pdbcode", "-pdb", type=str, dest = "pdbcode", default=None,
+                           help="A PDB code (including chain identifier) on which to perform the analysis")
+    argParser.add_argument("--quiet", "-q", default="False", type=str, dest="quiet", 
+                           help="If False (default), sequence information will be outputted")
+    argParser.add_argument("--output", "-o", default=None, type=str, dest="output",
+                           help="(Optional) where to write results (default is to just print to screen)")
+    options = argParser.parse_args()
+    
+    # Print help if no arguments given
+    if len(sys.argv) < 2:
+        argParser.print_help()
+        sys.exit()
+        
+    # Check a chain identifier has been given, if using PDB code and not sequence
+    if options.pdbcode and len(options.pdbcode) < 5:
+        print("Please provide a chain ID for your PDB entry query.")
+        sys.exit()    
+    
+    # Execute program
+    calculate_distance_from_germline(sequence = options.sequence, pdbcode = options.pdbcode, 
+                                     quiet = options.quiet, output = options.output)
+        

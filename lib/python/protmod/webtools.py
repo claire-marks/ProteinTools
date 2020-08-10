@@ -1,6 +1,7 @@
 # Functions that deal with downloading data from the web
 
 import requests
+from .sequences import parse_fasta
 
 ################################################################################
 def download(url, filename="download.txt"):
@@ -53,3 +54,52 @@ def download_pdb_structure(pdbcode, pdbfile=None):
     outfile = download(url, pdbfile)
         
     return outfile
+    
+################################################################################
+def fetch_sequence_from_pdb(pdbcode, chain=None):
+    """
+    Fetch a sequence of a PDB entry.
+    
+    --PARAMETERS--
+    pdbcode: the four-letter PDB ID for the entry that you wish to download.
+    chain: specify the chain you are interested in (optional).
+        
+    --RETURNS--
+    The sequence for the specified PDB entry. If the chain is not specified, the 
+        function will return all sequences stored in a dictionary, with the
+        chain ID as the key.
+    """
+    
+    # Ensure the provided PDB code is only 4 letters long
+    if len(pdbcode) != 4:
+        raise Exception("%s is not a valid PDB code (should be four letters long)." %(pdbcode))
+    
+    # Establish url and output filename
+    url = "https://www.rcsb.org/fasta/entry/%s/display" %(pdbcode.upper())
+    
+    # Load fasta file from web
+    r = requests.get(url, allow_redirects=True)
+    fasta = r.content.decode().split("\n")
+    sequences = parse_fasta(fasta)
+
+    # Change dictionary keys to just chain IDs
+    by_chain = {}
+    for seq in sequences:
+        # Relies on PDB fasta headings remaining in the same format!
+        chainid = seq.split("|")[1].split()[-1]
+        if "," in chainid:
+            chainids = chainid.split(",")
+            for chainid in chainids:
+                by_chain[chainid] = sequences[seq]
+        else:
+            by_chain[chainid] = sequences[seq]
+        
+    if not chain:
+        return by_chain
+    else:
+        if chain in by_chain:
+            return by_chain[chain]
+        else:
+            raise Exception("Chain %s not found for PDB entry %s." %(chain, pdbcode))
+            return
+    

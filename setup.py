@@ -5,7 +5,6 @@ import numpy as np
 
 numpy_include_dir = np.get_include()
 
-# Setup script written by Jinwoo Leem
 setup(name = "protmod",
       version = "1.0",
       description = "Useful things for dealing with proteins!",
@@ -17,5 +16,5 @@ setup(name = "protmod",
       package_dir = {
           "protmod": "lib/python/protmod",
       },
-      scripts = ["bin/LoopFinder"]
+      scripts = ["bin/LoopFinder", "bin/DistanceFromGermline"]
 )
