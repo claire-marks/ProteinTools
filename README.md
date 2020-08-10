@@ -17,6 +17,7 @@ The following Python packages are required:
 
 Also required:
   - [DSSP](https://github.com/cmbi/dssp) - the DSSP executable should be in your PATH.
+  - [ANARCI](https://github.com/oxpig/ANARCI) - antibody numbering software (only currently required for the 'DistanceFromGermline' script).
 
 
 ### Installation
@@ -46,4 +47,4 @@ I've tried to group similarly-themed functions together and the submodule names 
 I've written a few command line scripts that take care of some specific tasks. For more details about running these, type the script name followed by '-h' at the command line (e.g. `LoopFinder -h`).
 
   - **LoopFinder** - identifies which regions of a PDB structure (or a series of PDB structures) correspond to loops.
-  - **DistanceFromGermline** - for a query antibody sequence, calculates its Hamming distance from the germline (V and J) based on the ANARCI designation. Requires ANARCI to be installed (can be obtained from https://github.com/oxpig/ANARCI). 
+  - **DistanceFromGermline** - for a query antibody sequence, calculates its Hamming distance from the germline (V and J) based on the ANARCI designation, therefore estimating how naive/mature it is. Requires ANARCI to be installed (can be obtained from https://github.com/oxpig/ANARCI). 
