@@ -8,7 +8,7 @@ def download(url, filename="download.txt"):
     """
     Download a file from the internet.
     
-    --PARAMETERS--
+    --ARGUMENTS--
     url: the address to attempt to download from.
     filename: where the file should be saved.
     
@@ -32,7 +32,7 @@ def download_pdb_structure(pdbcode, pdbfile=None):
     """
     Download a PDB structure from the PDB website.
     
-    --PARAMETERS--
+    --ARGUMENTS--
     pdbcode: the four-letter PDB ID for the entry that you wish to download.
     pdbfile: where the file should be saved. Default is to save the file in
         the current directory, filename <pdbcode>.pdb.
@@ -60,7 +60,7 @@ def fetch_sequence_from_pdb(pdbcode, chain=None):
     """
     Fetch a sequence of a PDB entry.
     
-    --PARAMETERS--
+    --ARGUMENTS--
     pdbcode: the four-letter PDB ID for the entry that you wish to download.
     chain: specify the chain you are interested in (optional).
         

@@ -1,5 +1,7 @@
 # Functions to deal with protein sequences
 
+import os
+
 ################################################################################
 def write_fasta(seqid, sequence, outpath):
     """
