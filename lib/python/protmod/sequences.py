@@ -42,7 +42,7 @@ def parse_fasta(fasta):
     # If provided with a path to a fasta file, load data
     if isinstance(fasta, str):
         if os.path.isfile(fasta):
-            fasta = open(fastafile).readlines()
+            fasta = open(fasta).readlines()
         else:
             raise Exception("File not found.")
       
