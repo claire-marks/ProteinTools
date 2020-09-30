@@ -25,6 +25,22 @@ def write_fasta(seqid, sequence, outpath):
         f.write(write_str)
 
     return
+
+################################################################################
+def write_fasta_multiple(seq_dict, outpath):
+    write_str = ""
+    for seqid in seq_dict:
+        write_str += ">%s\n" %(seqid)
+        i = 0
+        sequence = seq_dict[seqid]
+        while sequence[i:i+80] != "":
+            write_str += sequence[i:i+80] + "\n"
+            i += 80
+
+    with open(outpath, "w") as f:
+        f.write(write_str)
+
+    return
     
 ################################################################################
 def parse_fasta(fasta):
