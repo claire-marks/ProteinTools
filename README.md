@@ -1,4 +1,4 @@
-# ProteinTools - README
+# ProteinTools
 
 ### Overview
 
